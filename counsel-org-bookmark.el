@@ -71,8 +71,8 @@
     "create a child")
    ("r" (lambda (name)
           (when-let ((record (assoc name bookmark-alist)))
-            (counsel-org-bookmark--recurse-entry record)))
-    "recurse")))
+            (counsel-org-bookmark--go-deeper record)))
+    "go deeper")))
 
 (defun counsel-org-bookmark--create-child ()
   "Create a child under the current entry."
@@ -86,8 +86,10 @@
     (goto-char (point-max))
     (insert "\n* ")))
 
-(defun counsel-org-bookmark--recurse-entry (record)
-  "Recursive `counsel-org-goto' from a subtree at RECORD."
+(defvar counsel-org-bookmark--buffer)
+
+(defun counsel-org-bookmark--go-deeper (record)
+  "Find an descendant heading from an Org bookmark RECORD."
   (let-alist
       (save-window-excursion
         (org-with-wide-buffer
@@ -101,8 +103,8 @@
              (org-back-to-heading)
              (setq heading (org-get-heading t t t t)
                    subtree-end (save-excursion (org-end-of-subtree))))
-           `((buffer . ,(current-buffer))
-             (heading . ,heading)
+           (setq counsel-org-bookmark--buffer (current-buffer))
+           `((heading . ,heading)
              (candidates
               . ,(let (result)
                    (while (re-search-forward org-heading-regexp subtree-end t)
@@ -116,17 +118,18 @@
               '(1
                 ("o" (lambda (cell)
                        (with-ivy-window
+                         (switch-to-buffer counsel-org-bookmark--buffer)
                          (goto-char (cdr cell))
                          (org-show-entry)))
                  "jump")
                 ("j" (lambda (cell)
-                       (switch-to-buffer-other-window .buffer)
+                       (switch-to-buffer-other-window counsel-org-bookmark--buffer)
                        (goto-char (cdr cell))
                        (org-show-entry))
                  "other-window")
                 ("c" (lambda (cell)
                        (with-ivy-window
-                         (switch-to-buffer .buffer)
+                         (switch-to-buffer counsel-org-bookmark--buffer)
                          (goto-char (cdr cell))
                          (counsel-org-bookmark--create-child)))
                  "create a child")))))
